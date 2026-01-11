@@ -12,7 +12,8 @@ export default function Register() {
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("/auth/register", {
+      const base = process.env.REACT_APP_API_URL || '';
+      const res = await axios.post(`${base}/auth/register`, {
         first_name: firstName,
         last_name: lastName,
         email,
@@ -22,13 +23,12 @@ export default function Register() {
       alert("Registration successful!");
       window.location.href = "/login"; 
     } catch (err) {
-      alert("Registration failed: " + (err.response?.data?.message || err.message));
+      alert("Registration failed: " + (err.response?.data?.message || err.response?.data?.error || err.message));
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Header />
 
       {/* Main */}
       <main className="flex min-h-screen items-center justify-center px-4 pt-[120px] pb-10">

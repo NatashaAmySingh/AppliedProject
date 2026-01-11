@@ -37,14 +37,47 @@ exports.register = async (req, res) => {
         if (anyRole.length) defaultRole = anyRole[0].role_id;
       }
     } catch (e) {
-      // roles table might not exist or DB not seeded
-      defaultRole = null;
+      // roles table might not exist or DB not seeded — try to create basic roles and re-query
+      try {
+        await pool.query("INSERT IGNORE INTO roles (role_name) VALUES ('System Admin'), ('Caricom Supervisor'), ('Caricom Clerk'), ('External Officer')");
+        const [roleRows2] = await pool.query('SELECT role_id FROM roles WHERE role_name = ?', ['External Officer']);
+        if (roleRows2.length) defaultRole = roleRows2[0].role_id;
+        else {
+          const [anyRole2] = await pool.query('SELECT role_id FROM roles LIMIT 1');
+          if (anyRole2.length) defaultRole = anyRole2[0].role_id;
+        }
+      } catch (e2) {
+        defaultRole = null;
+      }
     }
 
     if (!defaultRole) return res.status(500).json({ error: 'No roles defined in DB. Please seed roles or contact an administrator.' });
+    // ensure there's at least one office to assign (users.office_id is NOT NULL)
+    let defaultOffice = null;
+    try {
+      const [officeRows] = await pool.query('SELECT office_id FROM nis_office LIMIT 1');
+      if (officeRows.length) defaultOffice = officeRows[0].office_id;
+      else {
+        // ensure there's at least one country for the office
+        let countryId = null;
+        const [countryRows] = await pool.query('SELECT country_id FROM countries LIMIT 1');
+        if (countryRows.length) countryId = countryRows[0].country_id;
+        else {
+          const [insCountry] = await pool.query("INSERT INTO countries (country_name, country_code) VALUES (?, ?)", ['Default Country', 'DF']);
+          countryId = insCountry.insertId;
+        }
+        const [insOffice] = await pool.query('INSERT INTO nis_office (office_name, country_id, email) VALUES (?, ?, ?)', ['Default Office', countryId, 'noreply@example.com']);
+        defaultOffice = insOffice.insertId;
+      }
+    } catch (e) {
+      console.error('ensure default office error:', e);
+      defaultOffice = null;
+    }
 
-    await pool.query('INSERT INTO users (first_name, last_name, email, password_hash, role_id) VALUES (?, ?, ?, ?, ?)', 
-      [first_name, last_name, email, hash, defaultRole]);
+    if (!defaultOffice) return res.status(500).json({ error: 'No office available. Please seed `nis_office` or contact an administrator.' });
+
+    await pool.query('INSERT INTO users (first_name, last_name, email, password_hash, role_id, office_id) VALUES (?, ?, ?, ?, ?, ?)', 
+      [first_name, last_name, email, hash, defaultRole, defaultOffice]);
     res.json({ message: 'User registered successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
