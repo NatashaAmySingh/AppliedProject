@@ -15,6 +15,17 @@ export default function Header() {
 
   const userName = `${localStorage.getItem("first_name") || ""} ${localStorage.getItem("last_name") || ""}`.trim();
   const initials = ((localStorage.getItem("first_name") || "")[0] || "U") + ((localStorage.getItem("last_name") || "")[0] || "");
+  const [role, setRole] = useState(localStorage.getItem('role') || '');
+
+  useEffect(() => {
+    function handleStorage(e) {
+      if (e.key === 'role') setRole(e.newValue);
+    }
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const roleLabel = role === '1' ? 'Admin' : role === '2' ? 'Manager' : role === '3' ? 'Staff' : 'User';
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -36,6 +47,9 @@ export default function Header() {
     localStorage.removeItem("token");
     localStorage.removeItem("first_name");
     localStorage.removeItem("last_name");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("email");
     window.location.href = "/login";
   };
 
@@ -100,7 +114,7 @@ export default function Header() {
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-blue-600 font-semibold">{initials}</div>
             <div className="hidden flex-col text-left md:flex">
               <span className="text-sm font-medium text-white">{userName || 'User'}</span>
-              <span className="text-xs text-white/80">Admin</span>
+              <span className="text-xs text-white/80">{roleLabel}</span>
             </div>
             <span className="material-symbols-outlined text-white">expand_more</span>
           </button>

@@ -15,26 +15,24 @@ export default function UserSettings() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
         <Header />
+      <div className="flex fixed top-16 md:top-0 left-0 w-full  md:h-screen z-10">
       <Sidebar />
-      <div className="ml-0 md:ml-64">
+      <div className="ml-0 w-1/2 self-center md:ml-64">
         <main className="pt-20 p-6">
-          <h2 className="mb-4 text-2xl font-semibold">User Settings</h2>
-          <div className="max-w-xl">
+          <h2 className="mb-4 text-2xl font-semibold text-gray-800 dark:text-gray-100">User Settings</h2>
+          <div className="max-w-xl rounded-xl border border-gray-100 bg-white p-6 dark:bg-gray-800 dark:border-gray-700">
             <label className="flex items-center gap-3 text-gray-800 dark:text-gray-200">
               <input type="checkbox" checked={emailNotif} onChange={(e) => setEmailNotif(e.target.checked)} className="accent-blue-600" />
               <span>Email notifications</span>
             </label>
 
-            <label className="mt-4 flex items-center gap-3 text-gray-800 dark:text-gray-200">
-              <input type="checkbox" checked={compactMode} onChange={(e) => setCompactMode(e.target.checked)} className="accent-blue-600" />
-              <span>Compact layout</span>
-            </label>
 
             <div className="mt-6">
               <button onClick={save} className="rounded bg-blue-600 px-4 py-2 text-white">Save Settings</button>
             </div>
           </div>
         </main>
+      </div>
       </div>
     </div>
   );

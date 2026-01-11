@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Header from "../components/header";
 import Sidebar from "../components/Sidebar";
+import DocumentsList from '../components/DocumentsList';
 import { logout } from "../utils/auth";
 import { loadCountries, getCountryName } from "../utils/meta";
 
@@ -35,6 +36,8 @@ export default function RequestDetail() {
       .then((res) => {
         setRequest(res.data);
         setStatus(res.data.status);
+        // pre-select assigned user if present
+        if (res.data && res.data.assigned_user_id) setAssigningTo(String(res.data.assigned_user_id));
       })
       .catch((err) => console.error("Failed to load request:", err));
 
@@ -44,9 +47,6 @@ export default function RequestDetail() {
     axios.get('/users', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => {
         setUsers(r.data || []);
-        if (r.data && r.data.length && request && !request.assigned_user_id) {
-          setAssigningTo('');
-        }
       })
       .catch(() => setUsers([]));
   }, []);
@@ -150,6 +150,19 @@ export default function RequestDetail() {
                 <span className="font-semibold text-gray-800 dark:text-gray-100">Assigned To:</span>{" "}
                 <span className="text-gray-700 dark:text-gray-200">{request.assigned_to || "-"}</span>
               </p>
+              <p className="mt-2">
+                <span className="font-semibold text-gray-800 dark:text-gray-100">Description:</span>{" "}
+                <span className="text-gray-700 dark:text-gray-200">{request.description || request.additional_notes || '-'}</span>
+              </p>
+              <div className="mt-3">
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Attachments</h4>
+                <div className="mt-2 space-y-1">
+                  {/* load documents via API */}
+                  {request.request_id ? (
+                    <DocumentsList requestId={request.request_id} />
+                  ) : null}
+                </div>
+              </div>
               {['1','2'].includes(localStorage.getItem('role')) ? (
                 <div className="mt-2 flex items-center gap-2">
                   <select
@@ -159,7 +172,7 @@ export default function RequestDetail() {
                   >
                     <option value="">-- assign --</option>
                     {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                      <option key={u.user_id || u.id} value={u.user_id || u.id}>{(u.first_name || u.last_name) ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : (u.name || u.email || `user-${u.user_id || u.id}`)}</option>
                     ))}
                   </select>
                   <button

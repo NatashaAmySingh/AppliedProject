@@ -1,10 +1,10 @@
 
 -- Create database
-CREATE DATABASE IF NOT EXISTS caricom_portal
+CREATE DATABASE IF NOT EXISTS nis_portal
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
-USE caricom_portal;
+USE nis_portal;
 
 -- REFERENCE TABLES
 
@@ -114,6 +114,7 @@ CREATE TABLE requests (
     target_country_id INT NOT NULL,
     benefit_type_id INT NOT NULL,
     employment_period VARCHAR(100),
+    description TEXT,
     status ENUM('PENDING', 'IN_PROGRESS', 'AWAITING_RESPONSE', 'RESPONDED', 'CLOSED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
     priority ENUM('LOW', 'NORMAL', 'HIGH', 'URGENT') DEFAULT 'NORMAL',
     assigned_to INT,
@@ -460,7 +461,7 @@ SELECT
     r.status,
     r.created_at,
     CONCAT(c.first_name, ' ', c.last_name) AS claimant_name,
-    c.dob AS claimant_dob,
+    c.date_of_birth AS claimant_dob,
     c.national_id,
     co.country_name AS target_country,
     b.benefit_name

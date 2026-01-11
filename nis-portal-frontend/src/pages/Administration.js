@@ -5,6 +5,7 @@ import Header from "../components/header";
 
 export default function Administration() {
   const [users, setUsers] = useState([]);
+  const [rolesList, setRolesList] = useState([]);
   const [settings, setSettings] = useState({
     passwordLength: 8,
     sessionTimeout: 30,
@@ -31,6 +32,11 @@ export default function Administration() {
       .get("/users", { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => setUsers(res.data))
       .catch((err) => console.error("Failed to load users:", err));
+
+    // load roles mapping
+    axios.get('/meta/roles', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => setRolesList(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setRolesList([]));
 
     axios
       .get("/audit", {
@@ -118,7 +124,10 @@ export default function Administration() {
                     <input placeholder="Last name" value={newUser.last_name} onChange={(e)=>setNewUser({...newUser, last_name: e.target.value})} className="rounded-md border px-3 py-2" />
                     <input placeholder="Email" value={newUser.email} onChange={(e)=>setNewUser({...newUser, email: e.target.value})} className="rounded-md border px-3 py-2" />
                     <input placeholder="Password" type="password" value={newUser.password} onChange={(e)=>setNewUser({...newUser, password: e.target.value})} className="rounded-md border px-3 py-2" />
-                    <input placeholder="Role (id)" value={newUser.role} onChange={(e)=>setNewUser({...newUser, role: e.target.value})} className="rounded-md border px-3 py-2" />
+                    <select value={newUser.role} onChange={(e)=>setNewUser({...newUser, role: e.target.value})} className="rounded-md border px-3 py-2">
+                      <option value="">Select role</option>
+                      {rolesList.map(r => (<option key={r.id} value={String(r.id)}>{r.name}</option>))}
+                    </select>
                     <div className="flex gap-2">
                       <button onClick={addUser} className="rounded-md bg-green-500 px-3 py-2 text-white">Create</button>
                       <button onClick={()=>setShowAdd(false)} className="rounded-md bg-gray-200 px-3 py-2">Cancel</button>
@@ -147,12 +156,15 @@ export default function Administration() {
                         >
                           <td className="px-4 py-3">{u.name}</td>
                           <td className="px-4 py-3">{u.email}</td>
-                          <td className="px-4 py-3">{u.role ?? '-'}</td>
+                          <td className="px-4 py-3">{(rolesList.find(r => String(r.id) === String(u.role)) || { name: (u.role || '-') }).name}</td>
                           <td className="px-4 py-3">{u.organization ?? '-'}</td>
                           <td className="px-4 py-3">
                             {editingUser === u.id ? (
                               <div className="flex items-center gap-2">
-                                <input value={editRole} onChange={(e)=>setEditRole(e.target.value)} placeholder="role id" className="rounded-md border px-2 py-1 text-xs" />
+                                <select value={editRole} onChange={(e)=>setEditRole(e.target.value)} className="rounded-md border px-2 py-1 text-xs">
+                                  <option value="">Select role</option>
+                                  {rolesList.map(r => (<option key={r.id} value={String(r.id)}>{r.name}</option>))}
+                                </select>
                                 <button onClick={()=>saveEdit(u.id)} className="rounded-md bg-green-500 px-3 py-1 text-white text-xs">Save</button>
                                 <button onClick={()=>setEditingUser(null)} className="rounded-md bg-gray-200 px-3 py-1 text-xs">Cancel</button>
                               </div>

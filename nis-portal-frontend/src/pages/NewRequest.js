@@ -22,6 +22,7 @@ export default function NewRequest() {
   const [files, setFiles] = useState([]);
   const [countries, setCountries] = useState([]);
   const [benefits, setBenefits] = useState([]);
+  const today = new Date().toISOString().split('T')[0];
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -87,10 +88,12 @@ export default function NewRequest() {
       const payload = {
         first_name: formData.first_name,
         last_name: formData.last_name,
-        dob: formattedDob,
+        date_of_birth: formattedDob,
         national_id: formData.national_id,
         target_country_id: formData.target_country_id ? Number(formData.target_country_id) : null,
         benefit_type_id: formData.benefit_type_id ? Number(formData.benefit_type_id) : null,
+        employment_period: formData.employment_period,
+        additional_notes: formData.additional_notes,
       };
 
       const res = await axios.post(`/requests`, payload, {
@@ -179,14 +182,14 @@ export default function NewRequest() {
                     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                       <input id="first_name" value={formData.first_name} onChange={handleChange} placeholder="Enter first name" required className="mt-2 w-full rounded-md border px-3 py-2 text-sm" />
                       <input id="last_name" value={formData.last_name} onChange={handleChange} placeholder="Enter last name" required className="mt-2 w-full rounded-md border px-3 py-2 text-sm" />
-                      <input id="date_of_birth" value={formData.date_of_birth} onChange={handleChange} placeholder="DD-MM-YYYY" required className="mt-2 w-full rounded-md border px-3 py-2 text-sm" />
+                      <input id="date_of_birth" type="date" value={formData.date_of_birth} onChange={handleChange} max={today} required className="mt-2 w-full rounded-md border px-3 py-2 text-sm" />
                       <select id="sex" value={formData.sex} onChange={handleChange} required className="mt-2 w-full rounded-md border px-3 py-2 text-sm">
                         <option value="">Select...</option>
                         <option>Male</option>
                         <option>Female</option>
                       </select>
                       <input id="nis_number" value={formData.nis_number} onChange={handleChange} placeholder="Enter ID number" required className="mt-2 w-full rounded-md border px-3 py-2 text-sm" />
-                      <input id="national_id" value={formData.national_id} onChange={handleChange} placeholder="Enter passport or ID number" className="mt-2 w-full rounded-md border px-3 py-2 text-sm" />
+                      <input id="national_id" value={formData.national_id} onChange={handleChange} placeholder="Enter passport or ID number" required className="mt-2 w-full rounded-md border px-3 py-2 text-sm" />
                     </div>
                   </section>
 

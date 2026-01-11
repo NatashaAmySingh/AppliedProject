@@ -1,5 +1,40 @@
 const pool = require('../config/db');
 
+// Status mapping between DB enum values (UPPERCASE) and frontend-friendly labels
+const STATUS_MAP = {
+  'PENDING': 'Pending',
+  'IN_PROGRESS': 'In Progress',
+  'AWAITING_RESPONSE': 'Awaiting Response',
+  'RESPONDED': 'Responded',
+  'CLOSED': 'Closed',
+  'CANCELLED': 'Cancelled'
+};
+
+function humanizeStatus(s) {
+  if (!s && s !== '') return s;
+  const up = String(s).toUpperCase();
+  return STATUS_MAP[up] || (up.charAt(0) + up.slice(1).toLowerCase());
+}
+
+function normalizeStatus(input) {
+  if (!input && input !== '') return input;
+  const up = String(input).toUpperCase();
+  if (Object.prototype.hasOwnProperty.call(STATUS_MAP, up)) return up;
+  return up;
+}
+
+async function columnExists(columnName) {
+  try {
+    const [rows] = await pool.query(
+      "SELECT COUNT(*) AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'requests' AND COLUMN_NAME = ?",
+      [columnName]
+    );
+    return rows && rows[0] && Number(rows[0].c) > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
 
 
 /**
@@ -12,16 +47,17 @@ exports.createRequest = async (req, res) => {
     const {
       first_name,
       last_name,
-      dob,
+      date_of_birth,
       national_id,
       target_country_id,
-      benefit_type_id
+      benefit_type_id,
+      employment_period
     } = req.body;
 
     if (
       !first_name ||
       !last_name ||
-      !dob ||
+      !date_of_birth ||
       !national_id ||
       !target_country_id ||
       !benefit_type_id
@@ -43,33 +79,92 @@ exports.createRequest = async (req, res) => {
     } else {
       const [claimant] = await conn.query(
         `
-        INSERT INTO claimants (first_name, last_name, dob, national_id)
+        INSERT INTO claimants (first_name, last_name, date_of_birth, national_id)
         VALUES (?, ?, ?, ?)
         `,
-        [first_name, last_name, dob, national_id]
+        [first_name, last_name, date_of_birth, national_id]
       );
       claimantId = claimant.insertId;
     }
 
-    // Create request
-    const [request] = await conn.query(
-      `
-      INSERT INTO requests (
-        claimant_id,
-        target_country_id,
-        benefit_type_id,
-        status
-      )
-      VALUES (?, ?, ?, 'Pending')
-      `,
-      [claimantId, target_country_id, benefit_type_id]
-    );
+    // Determine requester and requesting country
+    const requesterId = req.user ? req.user.user_id : null;
+    let requestingCountryId = null;
+    if (requesterId) {
+      try {
+        const [urows] = await conn.query('SELECT office_id FROM users WHERE user_id = ? LIMIT 1', [requesterId]);
+        if (urows && urows.length > 0 && urows[0].office_id) {
+          const [orows] = await conn.query('SELECT country_id FROM nis_office WHERE office_id = ? LIMIT 1', [urows[0].office_id]);
+          if (orows && orows.length > 0) requestingCountryId = orows[0].country_id;
+        }
+      } catch (e) {
+        requestingCountryId = null;
+      }
+    }
+    if (!requestingCountryId) requestingCountryId = 1;
+
+    // Build a unique request_number: {CC}-{YEAR}-{seq}
+    let countryCode = 'GY';
+    try {
+      const [crow] = await conn.query('SELECT country_code FROM countries WHERE country_id = ? LIMIT 1', [target_country_id]);
+      if (crow && crow.length > 0 && crow[0].country_code) countryCode = crow[0].country_code;
+    } catch (e) {
+      countryCode = 'GY';
+    }
+    const year = new Date().getFullYear();
+    const likePattern = `${countryCode}-${year}-%`;
+    const [countRows] = await conn.query('SELECT COUNT(*) as c FROM requests WHERE request_number LIKE ?', [likePattern]);
+    const seq = (countRows && countRows[0] && countRows[0].c ? Number(countRows[0].c) : 0) + 1;
+    const pad = (n, w=5) => String(n).padStart(w, '0');
+    const requestNumber = `${countryCode}-${year}-${pad(seq)}`;
+
+    // Create request (include description only if column exists)
+    const hasDesc = await columnExists('description');
+    if (hasDesc) {
+      const [request] = await conn.query(
+        `
+        INSERT INTO requests (
+          request_number,
+          claimant_id,
+          requester_id,
+          requesting_country_id,
+          target_country_id,
+          benefit_type_id,
+          employment_period,
+          description,
+          status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+        `,
+        [requestNumber, claimantId, requesterId, requestingCountryId, target_country_id, benefit_type_id, employment_period || null, req.body.additional_notes || null]
+      );
+      // attach request id for response
+      req._newRequestInsertId = request.insertId;
+    } else {
+      const [request] = await conn.query(
+        `
+        INSERT INTO requests (
+          request_number,
+          claimant_id,
+          requester_id,
+          requesting_country_id,
+          target_country_id,
+          benefit_type_id,
+          employment_period,
+          status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
+        `,
+        [requestNumber, claimantId, requesterId, requestingCountryId, target_country_id, benefit_type_id, employment_period || null]
+      );
+      req._newRequestInsertId = request.insertId;
+    }
 
     await conn.commit();
 
     res.status(201).json({
       message: "Request created successfully",
-      request_id: request.insertId
+      request_id: req._newRequestInsertId
     });
 
   } catch (err) {
@@ -86,48 +181,30 @@ exports.createRequest = async (req, res) => {
  */
 exports.listRequests = async (req, res) => {
   try {
-    // Try to include assigned user's name if schema supports assigned_user_id
-    try {
-      const [rows] = await pool.query(`
-        SELECT
-          r.request_id,
-          r.status,
-          r.created_at,
-          c.first_name,
-          c.last_name,
-          c.dob,
-          c.national_id,
-          r.target_country_id,
-          r.benefit_type_id,
-          CONCAT(u.first_name, ' ', u.last_name) AS assigned_to
-        FROM requests r
-        JOIN claimants c ON r.claimant_id = c.claimant_id
-        LEFT JOIN users u ON r.assigned_user_id = u.user_id
-        ORDER BY r.created_at DESC
-      `);
-      return res.json(rows);
-    } catch (innerErr) {
-      // If the schema doesn't have assigned_user_id or users table, fall back to simple list
-      if (innerErr && innerErr.code && innerErr.code === 'ER_BAD_FIELD_ERROR') {
-        const [rows] = await pool.query(`
-          SELECT
-            r.request_id,
-            r.status,
-            r.created_at,
-            c.first_name,
-            c.last_name,
-            c.dob,
-            c.national_id,
-            r.target_country_id,
-            r.benefit_type_id
-          FROM requests r
-          JOIN claimants c ON r.claimant_id = c.claimant_id
-          ORDER BY r.created_at DESC
-        `);
-        return res.json(rows);
-      }
-      throw innerErr;
-    }
+    // Build query dynamically to include description only if the column exists
+    const hasDesc = await columnExists('description');
+    const descSelect = hasDesc ? 'r.description AS description,' : 'NULL AS description,';
+    const q = `
+      SELECT
+        r.request_id,
+        r.status,
+        r.created_at,
+        c.first_name,
+        c.last_name,
+        c.date_of_birth,
+        c.national_id,
+        ${descSelect}
+        r.target_country_id,
+        r.benefit_type_id,
+        CONCAT(u.first_name, ' ', u.last_name) AS assigned_to
+      FROM requests r
+      JOIN claimants c ON r.claimant_id = c.claimant_id
+      LEFT JOIN users u ON r.assigned_user_id = u.user_id
+      ORDER BY r.created_at DESC
+    `;
+    const [rows] = await pool.query(q);
+    rows.forEach(row => { row.status = humanizeStatus(row.status); });
+    return res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -146,8 +223,9 @@ exports.updateRequest = async (req, res) => {
       return res.status(400).json({ error: 'Missing id or status' });
     }
 
-    const allowed = ['Pending', 'Responded', 'Closed'];
-    if (!allowed.includes(status)) {
+    const allowed = ['PENDING', 'RESPONDED', 'CLOSED'];
+    const norm = normalizeStatus(status);
+    if (!allowed.includes(norm)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
 
@@ -155,7 +233,7 @@ exports.updateRequest = async (req, res) => {
 
     const [result] = await conn.query(
       'UPDATE requests SET status = ? WHERE request_id = ?',
-      [status, id]
+      [norm, id]
     );
 
     await conn.commit();
@@ -164,7 +242,7 @@ exports.updateRequest = async (req, res) => {
       return res.status(404).json({ error: 'Request not found' });
     }
 
-    res.json({ message: 'Status updated', request_id: id, status });
+    res.json({ message: 'Status updated', request_id: id, status: humanizeStatus(norm) });
   } catch (err) {
     console.error('updateRequest error:', err);
     await conn.rollback();
@@ -181,55 +259,32 @@ exports.getRequest = async (req, res) => {
   try {
     const { id } = req.params;
     if (!id) return res.status(400).json({ error: 'Missing id' });
-    // Try to include assigned user name if schema supports assigned_user_id
-    let row;
-    try {
-      const [rows] = await pool.query(`
-        SELECT
-          r.request_id,
-          r.status,
-          r.created_at,
-          c.first_name,
-          c.last_name,
-          c.dob,
-          c.national_id,
-          r.target_country_id,
-          r.benefit_type_id,
-          CONCAT(u.first_name, ' ', u.last_name) AS assigned_to
-        FROM requests r
-        JOIN claimants c ON r.claimant_id = c.claimant_id
-        LEFT JOIN users u ON r.assigned_user_id = u.user_id
-        WHERE r.request_id = ?
-        LIMIT 1
-      `, [id]);
-
-      if (!rows || rows.length === 0) return res.status(404).json({ error: 'Request not found' });
-      row = rows[0];
-    } catch (innerErr) {
-      if (innerErr && innerErr.code && innerErr.code === 'ER_BAD_FIELD_ERROR') {
-        const [rows] = await pool.query(`
-          SELECT
-            r.request_id,
-            r.status,
-            r.created_at,
-            c.first_name,
-            c.last_name,
-            c.dob,
-            c.national_id,
-            r.target_country_id,
-            r.benefit_type_id
-          FROM requests r
-          JOIN claimants c ON r.claimant_id = c.claimant_id
-          WHERE r.request_id = ?
-          LIMIT 1
-        `, [id]);
-
-        if (!rows || rows.length === 0) return res.status(404).json({ error: 'Request not found' });
-        row = rows[0];
-      } else {
-        throw innerErr;
-      }
-    }
+    // Build query dynamically to include description only if the column exists
+    const hasDesc = await columnExists('description');
+    const descSelect = hasDesc ? 'r.description AS description,' : 'NULL AS description,';
+    const q = `
+      SELECT
+        r.request_id,
+        r.status,
+        r.created_at,
+        c.first_name,
+        c.last_name,
+        c.date_of_birth,
+        c.national_id,
+        ${descSelect}
+        r.target_country_id,
+        r.benefit_type_id,
+        CONCAT(u.first_name, ' ', u.last_name) AS assigned_to
+      FROM requests r
+      JOIN claimants c ON r.claimant_id = c.claimant_id
+      LEFT JOIN users u ON r.assigned_user_id = u.user_id
+      WHERE r.request_id = ?
+      LIMIT 1
+    `;
+    const [rows] = await pool.query(q, [id]);
+    if (!rows || rows.length === 0) return res.status(404).json({ error: 'Request not found' });
+    const row = rows[0];
+    row.status = humanizeStatus(row.status);
 
     // Attach benefit type metadata (fallback to simple mapping)
     const benefitTypes = [

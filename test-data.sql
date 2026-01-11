@@ -15,8 +15,8 @@ INSERT IGNORE INTO nis_office (office_name, country_id, email) VALUES
   ('National Insurance Board (NIB) Trinidad & Tobago', 2, 'info@nibtt.net'),
   ('National Insurance Scheme (NIS) Barbados', 3, 'info@nis.gov.bb');
 
--- Reuse a known bcrypt hash for Test@123 from the project SQL
-SET @pwhash = '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.ELkPqR2qrFfKaW';
+-- Reuse a known bcrypt hash for test from the project SQL
+SET @pwhash = '$2a$10$8lF14if/lstD1oskuV2TUe/zUOixasX7oMXIWlII3icdGTh7zE4tm';
 
 -- Insert test users (avoid duplicates by email)
 INSERT INTO users (first_name, last_name, email, password_hash, role_id, office_id, is_active)
@@ -33,7 +33,7 @@ SELECT * FROM (
   UNION ALL
   SELECT 'Michelle','Brown','m.brown@nis.gov.bb',@pwhash,(SELECT role_id FROM roles WHERE role_name='External Officer' LIMIT 1),(SELECT office_id FROM nis_office WHERE office_name LIKE '%Barbados%' LIMIT 1),TRUE
 ) AS tmp
-ON DUPLICATE KEY UPDATE email = email;
+ON DUPLICATE KEY UPDATE email = VALUES(email);
 
 -- Add more users programmatically (10 users)
 INSERT IGNORE INTO users (first_name, last_name, email, password_hash, role_id, office_id, is_active)

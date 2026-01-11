@@ -22,3 +22,21 @@ exports.getBenefitTypes = async (req, res) => {
   ];
   res.json(benefits);
 };
+
+exports.getRoles = async (req, res) => {
+  // read roles from DB if available
+  try {
+    const pool = require('../config/db');
+    const [rows] = await pool.query('SELECT role_id, role_name FROM roles ORDER BY role_id');
+    const roles = (rows || []).map(r => ({ id: r.role_id, name: r.role_name }));
+    res.json(roles);
+  } catch (err) {
+    // fallback to a static list if DB not available
+    res.json([
+      { id: 1, name: 'System Admin' },
+      { id: 2, name: 'Caricom Supervisor' },
+      { id: 3, name: 'Caricom Clerk' },
+      { id: 4, name: 'External Officer' },
+    ]);
+  }
+};

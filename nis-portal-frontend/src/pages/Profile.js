@@ -49,7 +49,7 @@ export default function Profile() {
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Header />
       <Sidebar />
-      <div className="ml-0 ml-64">
+      <div className="ml-0 md:ml-64">
         <main className="pt-20 p-6">Loading...</main>
       </div>
     </div>
@@ -58,9 +58,10 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Header />
+      <div className="flex fixed top-16 md:top-0 left-0 w-full  md:h-screen z-10">
       <Sidebar />
-      <div className="ml-0 ml-64">
-        <main className="pt-20 p-6">
+      <div className="ml-0 w-1/2 self-center md:ml-64">
+        <main className=" p-6">
           <h2 className="mb-4 text-2xl font-semibold text-gray-800 dark:text-gray-100">My Profile</h2>
           <div className="max-w-xl rounded-xl border border-gray-100 bg-white p-6 dark:bg-gray-800 dark:border-gray-700">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">First name</label>
@@ -78,7 +79,9 @@ export default function Profile() {
               </button>
             </div>
           </div>
+          
         </main>
+      </div>
       </div>
     </div>
   );
