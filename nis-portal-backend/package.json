@@ -1,0 +1,29 @@
+{
+  "name": "nis-portal-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "-": "^0.0.1",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "d": "^1.0.2",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-cors": "^0.0.3",
+    "express-router": "^0.0.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
+    "mysql2": "^3.16.0",
+    "nodemailer": "^7.0.12",
+    "nodemon": "^3.1.11"
+  }
+}

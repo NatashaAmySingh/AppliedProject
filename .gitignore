@@ -1,0 +1,69 @@
+# Node modules
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+logs/
+
+# Environment files
+.env
+.env.*
+
+# Build outputs
+/dist
+/build
+/nis-portal-frontend/build/
+/nis-portal-frontend/.next/
+
+# Frontend & backend node_modules
+/nis-portal-frontend/node_modules/
+/nis-portal-backend/node_modules/
+
+# Uploads / user files
+/nis-portal-backend/uploads/
+
+# Coverage & cache
+coverage/
+.cache/
+tmp/
+temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Vim swap
+.*.swp
+
+# Misc
+*.tgz
+*.pem
+*.key
+*.crt
+
+# Build artifacts
+dist/
+
+# Local database
+*.sqlite
+
+# Ignore local secrets from VS Live Share
+.vsls/
+
+# Ignore development service folders
+.npm/
+
+# Ignore compiled frontend assets (if accidentally added)
+**/static/
+
+# End
