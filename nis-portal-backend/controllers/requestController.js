@@ -86,23 +86,48 @@ exports.createRequest = async (req, res) => {
  */
 exports.listRequests = async (req, res) => {
   try {
-    const [rows] = await pool.query(`
-      SELECT
-        r.request_id,
-        r.status,
-        r.created_at,
-        c.first_name,
-        c.last_name,
-        c.dob,
-        c.national_id,
-        r.target_country_id,
-        r.benefit_type_id
-      FROM requests r
-      JOIN claimants c ON r.claimant_id = c.claimant_id
-      ORDER BY r.created_at DESC
-    `);
-
-    res.json(rows);
+    // Try to include assigned user's name if schema supports assigned_user_id
+    try {
+      const [rows] = await pool.query(`
+        SELECT
+          r.request_id,
+          r.status,
+          r.created_at,
+          c.first_name,
+          c.last_name,
+          c.dob,
+          c.national_id,
+          r.target_country_id,
+          r.benefit_type_id,
+          CONCAT(u.first_name, ' ', u.last_name) AS assigned_to
+        FROM requests r
+        JOIN claimants c ON r.claimant_id = c.claimant_id
+        LEFT JOIN users u ON r.assigned_user_id = u.id
+        ORDER BY r.created_at DESC
+      `);
+      return res.json(rows);
+    } catch (innerErr) {
+      // If the schema doesn't have assigned_user_id or users table, fall back to simple list
+      if (innerErr && innerErr.code && innerErr.code === 'ER_BAD_FIELD_ERROR') {
+        const [rows] = await pool.query(`
+          SELECT
+            r.request_id,
+            r.status,
+            r.created_at,
+            c.first_name,
+            c.last_name,
+            c.dob,
+            c.national_id,
+            r.target_country_id,
+            r.benefit_type_id
+          FROM requests r
+          JOIN claimants c ON r.claimant_id = c.claimant_id
+          ORDER BY r.created_at DESC
+        `);
+        return res.json(rows);
+      }
+      throw innerErr;
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -156,27 +181,55 @@ exports.getRequest = async (req, res) => {
   try {
     const { id } = req.params;
     if (!id) return res.status(400).json({ error: 'Missing id' });
+    // Try to include assigned user name if schema supports assigned_user_id
+    let row;
+    try {
+      const [rows] = await pool.query(`
+        SELECT
+          r.request_id,
+          r.status,
+          r.created_at,
+          c.first_name,
+          c.last_name,
+          c.dob,
+          c.national_id,
+          r.target_country_id,
+          r.benefit_type_id,
+          CONCAT(u.first_name, ' ', u.last_name) AS assigned_to
+        FROM requests r
+        JOIN claimants c ON r.claimant_id = c.claimant_id
+        LEFT JOIN users u ON r.assigned_user_id = u.id
+        WHERE r.request_id = ?
+        LIMIT 1
+      `, [id]);
 
-    const [rows] = await pool.query(`
-      SELECT
-        r.request_id,
-        r.status,
-        r.created_at,
-        c.first_name,
-        c.last_name,
-        c.dob,
-        c.national_id,
-        r.target_country_id,
-        r.benefit_type_id
-      FROM requests r
-      JOIN claimants c ON r.claimant_id = c.claimant_id
-      WHERE r.request_id = ?
-      LIMIT 1
-    `, [id]);
+      if (!rows || rows.length === 0) return res.status(404).json({ error: 'Request not found' });
+      row = rows[0];
+    } catch (innerErr) {
+      if (innerErr && innerErr.code && innerErr.code === 'ER_BAD_FIELD_ERROR') {
+        const [rows] = await pool.query(`
+          SELECT
+            r.request_id,
+            r.status,
+            r.created_at,
+            c.first_name,
+            c.last_name,
+            c.dob,
+            c.national_id,
+            r.target_country_id,
+            r.benefit_type_id
+          FROM requests r
+          JOIN claimants c ON r.claimant_id = c.claimant_id
+          WHERE r.request_id = ?
+          LIMIT 1
+        `, [id]);
 
-    if (!rows || rows.length === 0) return res.status(404).json({ error: 'Request not found' });
-
-    const row = rows[0];
+        if (!rows || rows.length === 0) return res.status(404).json({ error: 'Request not found' });
+        row = rows[0];
+      } else {
+        throw innerErr;
+      }
+    }
 
     // Attach benefit type metadata (fallback to simple mapping)
     const benefitTypes = [
