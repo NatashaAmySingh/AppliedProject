@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import a clean UI font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Fira+Code:wght@400;600&display=swap');
+
+/* Dark mode CSS variables and base element styling to complement Tailwind classes */
+:root {
+	--bg: #f8fafc;
+	--panel: #ffffff;
+	--text: #111827;
+	--muted: #6b7280;
+	--border: #e5e7eb;
+	--accent: #4d5fff; /* poppy coral */
+	--accent-2: #ffb86b; /* warm orange */
+	--success: #22c55e; /* vivid green */
+	--warning: #f59e0b; /* amber */
+	--danger: #ef4444; /* red */
+
+	/* fonts */
+	--font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+	--font-mono: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Segoe UI Mono', monospace;
+
+	/* header */
+	--header-bg: var(--accent);
+	--header-text: #ffffff;
+}
+
+.dark {
+	/* Poppier Night palette */
+	--bg: #071025; /* deep navy */
+	--panel: #0b1622;
+	--text: #e6f6ff; /* readable off-white */
+	--muted: #9fb0bf;
+	--text-strong: #ffffff; /* extra-strong headings */
+	--border: #102534;
+	--accent: #7dd3fc; /* bright cyan */
+	--accent-2: #ff7ab6; /* vibrant pink */
+	--success: #7ce6a6;
+	--warning: #ffd580;
+	--danger: #ff6b6b;
+
+	/* header in dark mode should be slightly darker than panel */
+	--header-bg: #03101a;
+	--header-text: #ffffff;
+}
+
+html, body, #root {
+	background-color: var(--bg);
+	color: var(--text);
+	font-family: var(--font-sans);
+}
+
+/* Make inputs, selects and textareas adapt to dark mode without changing markup everywhere */
+input, textarea, select, button {
+	background-color: transparent;
+}
+
+/* Ensure native selects use the themed panel background and readable text */
+select, input, textarea {
+	background-color: var(--panel);
+	color: var(--text);
+	border-color: var(--border);
+}
+
+/* Remove default arrow background clash on dark */
+select::-ms-expand { display: none; }
+
+.card, .panel {
+	background-color: var(--panel);
+	color: var(--text);
+	border-color: var(--border);
+}
+
+/* headings use stronger weight and tighter tracking for clarity */
+h1, h2, h3, h4, h5, h6 {
+	font-family: var(--font-sans);
+	-webkit-font-smoothing: antialiased;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+
+/* code blocks */
+code, pre, kbd, samp {
+	font-family: var(--font-mono);
+}
+
+/* Ensure table and list text colors in dark */
+table, th, td {
+	color: inherit;
+}
+
+/* Dark-mode utility overrides to map common Tailwind utility classes to theme variables */
+.dark .bg-white { background-color: var(--panel) !important; }
+.dark .bg-gray-50 { background-color: #071423 !important; }
+.dark .bg-gray-100 { background-color: #0b1b28 !important; }
+.dark .text-gray-800 { color: var(--text-strong) !important; }
+.dark .text-gray-700 { color: var(--text) !important; }
+.dark .text-gray-600 { color: #b7c6d2 !important; }
+.dark .text-gray-500 { color: var(--muted) !important; }
+.dark .border-gray-100 { border-color: var(--border) !important; }
+.dark .border-gray-700 { border-color: var(--border) !important; }
+
+/* Primary accent mappings */
+.dark .text-blue-400, .dark .text-blue-500, .dark .text-blue-600 { color: var(--accent) !important; }
+.dark .bg-blue-600 { background-color: var(--accent) !important; }
+.dark .text-blue-300 { color: rgba(125,211,252,0.92) !important; }
+
+/* Table/header/row readability tweaks */
+.dark thead.bg-white { background-color: rgba(255,255,255,0.02) !important; }
+.dark .divide-gray-100 { border-color: var(--border) !important; }
+.dark tr.bg-white { background-color: var(--panel) !important; }
+.dark tr.bg-gray-50 { background-color: #071927 !important; }
+.dark tr.hover\:bg-gray-100:hover, .dark tr:hover { background-color: rgba(255,255,255,0.02) !important; }
+
+/* Make small text like table cells more readable */
+.dark td { color: var(--text) !important; }
+.dark th { color: var(--text-strong) !important; }
+
+/* Status badge adjustments when classes use amber/cyan/green */
+.dark .bg-amber-100 { background-color: rgba(209,154,102,0.12) !important; }
+.dark .text-amber-800 { color: var(--warning) !important; }
+.dark .bg-cyan-100 { background-color: rgba(86,182,194,0.08) !important; }
+.dark .text-cyan-800 { color: var(--accent-2) !important; }
+.dark .bg-green-100 { background-color: rgba(152,195,121,0.08) !important; }
+.dark .text-green-800 { color: var(--success) !important; }
+
+/* Buttons and links */
+.dark a, .dark .link, .dark .text-blue-600 { color: var(--accent) !important; }
+
+/* Ensure subtle panel elevation in dark */
+.dark .shadow-sm, .dark .shadow-2xs { box-shadow: 0 2px 8px rgba(2,6,23,0.6); }
+
+/* Utility classes to use CSS variables where Tailwind colors were hard-coded */
+.accent {
+	color: var(--accent) !important;
+}
+.bg-accent {
+	background-color: var(--accent) !important;
+}
+.bg-success { background-color: var(--success) !important; }
+.bg-warning { background-color: var(--warning) !important; }
+.bg-danger { background-color: var(--danger) !important; }
+
+/* Slight panel glow in dark mode for depth */
+.dark .panel, .dark .card, .dark .rounded-xl {
+	box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 8px 24px rgba(2,6,23,0.6);
+}
+
+/* Improve heading contrast in dark mode */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+	color: var(--text-strong) !important;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Make small headings slightly more prominent */
+.dark .text-2xl, .dark .text-xl, .dark .text-lg { color: var(--text-strong) !important; }
+
+/* Utility to ensure headings are readable in dark and reasonable in light */
+.heading-strong { color: var(--accent); }
+.dark .heading-strong { color: var(--text-strong) !important; }
