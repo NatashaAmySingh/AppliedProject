@@ -53,6 +53,8 @@ CREATE TABLE benefit_types (
 -- Users Table
 CREATE TABLE users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
+    -- convenience alias for code that expects `id`
+    id INT GENERATED ALWAYS AS (user_id) STORED,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -117,6 +119,7 @@ CREATE TABLE requests (
     status ENUM('PENDING', 'IN_PROGRESS', 'AWAITING_RESPONSE', 'RESPONDED', 'CLOSED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
     priority ENUM('LOW', 'NORMAL', 'HIGH', 'URGENT') DEFAULT 'NORMAL',
     assigned_to INT,
+    assigned_user_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (claimant_id) REFERENCES claimants(claimant_id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -125,6 +128,7 @@ CREATE TABLE requests (
     FOREIGN KEY (target_country_id) REFERENCES countries(country_id) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (benefit_type_id) REFERENCES benefit_types(benefit_type_id) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (assigned_to) REFERENCES users(user_id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (assigned_user_id) REFERENCES users(user_id) ON DELETE SET NULL ON UPDATE CASCADE,
     INDEX idx_request_status (status),
     INDEX idx_request_claimant (claimant_id)
 ) ENGINE=InnoDB;
@@ -310,10 +314,10 @@ INSERT INTO claimants (first_name, last_name, date_of_birth, sex, nis_number, na
 ('David', 'Williams', '1955-11-30', 'M', 'GY-456789123', 'GY-ID-003', 3);
 
 -- Create sample requests
-INSERT INTO requests (request_number, claimant_id, requester_id, requesting_country_id, target_country_id, benefit_type_id, employment_period, status, assigned_to) VALUES
-('GY-2025-00001', 1, 2, 1, 3, 1, '1985-2000', 'PENDING', NULL),
-('GY-2025-00002', 2, 2, 1, 2, 1, '1990-2010', 'RESPONDED', 4),
-('GY-2025-00003', 3, 3, 1, 4, 1, '1980-1995', 'CLOSED', NULL);
+INSERT INTO requests (request_number, claimant_id, requester_id, requesting_country_id, target_country_id, benefit_type_id, employment_period, status, assigned_to, assigned_user_id) VALUES
+('GY-2025-00001', 1, 2, 1, 3, 1, '1985-2000', 'PENDING', NULL, NULL),
+('GY-2025-00002', 2, 2, 1, 2, 1, '1990-2010', 'RESPONDED', 4, 4),
+('GY-2025-00003', 3, 3, 1, 4, 1, '1980-1995', 'CLOSED', NULL, NULL);
 
 -- Create sample notes
 INSERT INTO notes (request_id, author_id, note_text) VALUES
@@ -433,7 +437,7 @@ JOIN countries oc ON r.requesting_country_id = oc.country_id
 JOIN countries tc ON r.target_country_id = tc.country_id
 JOIN benefit_types bt ON r.benefit_type_id = bt.benefit_type_id
 JOIN users u ON r.requester_id = u.user_id
-LEFT JOIN users au ON r.assigned_to = au.user_id;
+LEFT JOIN users au ON COALESCE(r.assigned_user_id, r.assigned_to) = au.user_id;
 
 -- User Activity View
 CREATE OR REPLACE VIEW vw_user_activity AS
@@ -447,7 +451,7 @@ SELECT
     u.last_login,
     u.is_active,
     (SELECT COUNT(*) FROM requests WHERE requester_id = u.user_id) AS requests_created,
-    (SELECT COUNT(*) FROM requests WHERE assigned_to = u.user_id AND status NOT IN ('CLOSED', 'CANCELLED')) AS pending_assignments
+    (SELECT COUNT(*) FROM requests WHERE (assigned_to = u.user_id OR assigned_user_id = u.user_id) AND status NOT IN ('CLOSED', 'CANCELLED')) AS pending_assignments
 FROM users u
 JOIN roles r ON u.role_id = r.role_id
 JOIN nis_office o ON u.office_id = o.office_id
