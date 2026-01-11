@@ -27,8 +27,24 @@ exports.register = async (req, res) => {
   const { first_name, last_name, email, password } = req.body;
   try {
     const hash = await bcrypt.hash(password, 10);
-    await pool.query('INSERT INTO users (first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?)', 
-      [first_name, last_name, email, hash]);
+    // find External Officer role_id if present, otherwise fall back to any role
+    let defaultRole = null;
+    try {
+      const [roleRows] = await pool.query('SELECT role_id FROM roles WHERE role_name = ?', ['External Officer']);
+      if (roleRows.length) defaultRole = roleRows[0].role_id;
+      else {
+        const [anyRole] = await pool.query('SELECT role_id FROM roles LIMIT 1');
+        if (anyRole.length) defaultRole = anyRole[0].role_id;
+      }
+    } catch (e) {
+      // roles table might not exist or DB not seeded
+      defaultRole = null;
+    }
+
+    if (!defaultRole) return res.status(500).json({ error: 'No roles defined in DB. Please seed roles or contact an administrator.' });
+
+    await pool.query('INSERT INTO users (first_name, last_name, email, password_hash, role_id) VALUES (?, ?, ?, ?, ?)', 
+      [first_name, last_name, email, hash, defaultRole]);
     res.json({ message: 'User registered successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

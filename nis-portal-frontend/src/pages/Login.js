@@ -18,6 +18,7 @@ export default function Login() {
       localStorage.setItem("last_name", res.data['user']['last_name']);
       if (res.data['user']['id']) localStorage.setItem('user_id', res.data['user']['id']);
       if (res.data['user']['email']) localStorage.setItem('email', res.data['user']['email']);
+      if (res.data['user']['role'] !== undefined) localStorage.setItem('role', String(res.data['user']['role']));
       console.log(res.data['user'])
       window.location.href = "/dashboard"; 
     } catch (err) {

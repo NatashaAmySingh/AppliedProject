@@ -56,17 +56,19 @@ export default function Sidebar() {
           </a>
         </li>
 
-        <li>
-          <a href="/administration">
-            <button className="flex w-full items-center justify-center px-3 py-3 text-2xl text-gray-700
-                           transition-colors duration-150 ease-in-out hover:cursor-pointer
-                           hover:border-l-[3px] hover:border-blue-500 hover:bg-blue-50
-                           lg:justify-start lg:gap-x-3">
-              <span className="material-symbols-outlined text-3xl lg:text-2xl text-gray-700">admin_panel_settings</span>
-              <span className="hidden text-base lg:block">Administration</span>
-            </button>
-          </a>
-        </li>
+        {localStorage.getItem('role') === '1' ? (
+          <li>
+            <a href="/administration">
+              <button className="flex w-full items-center justify-center px-3 py-3 text-2xl text-gray-700
+                             transition-colors duration-150 ease-in-out hover:cursor-pointer
+                             hover:border-l-[3px] hover:border-blue-500 hover:bg-blue-50
+                             lg:justify-start lg:gap-x-3">
+                <span className="material-symbols-outlined text-3xl lg:text-2xl text-gray-700">admin_panel_settings</span>
+                <span className="hidden text-base lg:block">Administration</span>
+              </button>
+            </a>
+          </li>
+        ) : null}
 
         <li>
           <a href="/help">

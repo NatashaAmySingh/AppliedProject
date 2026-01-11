@@ -33,12 +33,33 @@ exports.createUser = async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
 
+    // determine role id: if provided, validate it exists; otherwise try External Officer, then any role
+    let roleId = null;
+    try {
+      if (role !== undefined && role !== '') {
+        const [r] = await pool.query('SELECT role_id FROM roles WHERE role_id = ?', [role]);
+        if (r.length === 0) return res.status(400).json({ error: 'Provided role does not exist' });
+        roleId = role;
+      } else {
+        const [roleRows] = await pool.query('SELECT role_id FROM roles WHERE role_name = ?', ['External Officer']);
+        if (roleRows.length) roleId = roleRows[0].role_id;
+        else {
+          const [anyRole] = await pool.query('SELECT role_id FROM roles LIMIT 1');
+          if (anyRole.length) roleId = anyRole[0].role_id;
+        }
+      }
+    } catch (e) {
+      roleId = null;
+    }
+
+    if (!roleId) return res.status(500).json({ error: 'No roles defined in DB. Please seed roles or contact an administrator.' });
+
     const [result] = await pool.query(
       'INSERT INTO users (first_name, last_name, email, password_hash, role_id) VALUES (?, ?, ?, ?, ?)',
-      [first_name, last_name, email, hash, role || null]
+      [first_name, last_name, email, hash, roleId]
     );
 
-    res.status(201).json({ id: result.insertId, first_name, last_name, email, role: role || null });
+    res.status(201).json({ id: result.insertId, first_name, last_name, email, role: roleId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

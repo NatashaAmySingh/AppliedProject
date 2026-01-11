@@ -8,6 +8,8 @@ import { loadCountries, getCountryName } from "../utils/meta";
 export default function RequestDetail() {
   const [request, setRequest] = useState(null);
   const [status, setStatus] = useState("");
+  const [users, setUsers] = useState([]);
+  const [assigningTo, setAssigningTo] = useState('');
 
   const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
 
@@ -38,6 +40,15 @@ export default function RequestDetail() {
 
     // ensure country names available
     loadCountries().catch(() => {});
+    // load users for assignment
+    axios.get('/users', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        setUsers(r.data || []);
+        if (r.data && r.data.length && request && !request.assigned_user_id) {
+          setAssigningTo('');
+        }
+      })
+      .catch(() => setUsers([]));
   }, []);
 
   const updateStatus = (newStatus) => {
@@ -139,6 +150,39 @@ export default function RequestDetail() {
                 <span className="font-semibold text-gray-800 dark:text-gray-100">Assigned To:</span>{" "}
                 <span className="text-gray-700 dark:text-gray-200">{request.assigned_to || "-"}</span>
               </p>
+              {['1','2'].includes(localStorage.getItem('role')) ? (
+                <div className="mt-2 flex items-center gap-2">
+                  <select
+                    value={assigningTo}
+                    onChange={(e) => setAssigningTo(e.target.value)}
+                    className="rounded border px-2 py-1 text-sm"
+                  >
+                    <option value="">-- assign --</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={async () => {
+                      if (!assigningTo) return;
+                      try {
+                        const token = localStorage.getItem('token');
+                        await axios.put(`/requests/${request.request_id}/assign`, { user_id: assigningTo }, { headers: { Authorization: `Bearer ${token}` } });
+                        // update local UI
+                        const u = users.find(x => String(x.id) === String(assigningTo));
+                        setRequest(r => ({ ...r, assigned_to: u ? u.name : String(assigningTo), assigned_user_id: assigningTo }));
+                        setAssigningTo('');
+                      } catch (err) {
+                        console.error('Assign failed', err);
+                        alert('Failed to assign request');
+                      }
+                    }}
+                    className="rounded bg-blue-600 px-3 py-1 text-white text-sm"
+                  >
+                    Assign
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

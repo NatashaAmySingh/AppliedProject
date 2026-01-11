@@ -20,6 +20,13 @@ export default function Administration() {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
+    // restrict page to admins
+    const role = localStorage.getItem('role');
+    if (role !== '1') {
+      window.location.href = '/dashboard';
+      return;
+    }
+
     axios
       .get("/users", { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => setUsers(res.data))
