@@ -144,7 +144,7 @@ export default function Dashboard() {
                 <button
                   type="button"
                   className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200 sm:w-auto"
-                  onClick={() => window.location.href = '/NewRequest'}
+                  onClick={() => window.location.href = '/new-request'}
                 >
                   <span aria-hidden="true">➕</span>
                   New Request
