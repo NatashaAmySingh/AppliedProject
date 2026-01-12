@@ -1,4 +1,5 @@
-Important- import both caricom_portal_final and test-data sql files in MySQL 
+Important- import and run both caricom_portal_final.sql and test-data.sql sql files in the MySQL workbench 
+
 To launch Portal, open the start-all.bat file.
 
 Admin Account Details
